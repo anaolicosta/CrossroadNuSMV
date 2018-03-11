@@ -1,0 +1,121 @@
+-- CROSSROAD
+--
+-- Two light traffics with a sensor each:
+-- lightRoad1 - sensorRoad1
+-- lightRoad2 - sensorRoad2
+--
+-- Each light traffic can have one of following colours:
+-- r: red - no car passing
+-- y: yellow - next step the colour will be red
+-- g: green - cars passing
+--
+-- Each sensor can detect a car (TRUE) or detect no car (FALSE)
+--
+--
+-- Condition to switch from green to red (switch to red takes two steps, it switches first to yellow):
+--   Light is green AND
+--   No car passing in that road (sensor is FALSE) AND 
+--   A car waiting on the other road (sensor of the other road is TRUE)
+--
+-- Condition to switch to green:
+--   Other light is yellow
+--
+--
+-- In this file fair paths are NOT defined.
+-- Therefore the following properties do no hold:
+-- * Fairness specified in both CTL and LTL
+-- * Strong fairness specified in LTL
+-- 
+-- Strong fairness is not expressible in CTL. 
+-- An indication of this is the fact that the "equivalent" CTL formula
+-- for strong fairness holds even when there are no fair paths defined.
+--
+
+
+MODULE main
+VAR
+
+  lightRoad1 : {r,y,g};
+  sensorRoad1 : boolean;
+
+  lightRoad2: {r,y,g};
+  sensorRoad2 : boolean;
+
+ASSIGN
+
+  -- Only lightRoad2 has a constraint on init to avoid cyclic dependencies.
+  init(lightRoad2) := case
+                       lightRoad1 = r: g;
+                       lightRoad1 = y: r;
+		       lightRoad1 = g: r;
+                      esac;
+  
+  next(lightRoad1) := case
+                        -- Light1 is yeallow now, so it will be red in the next step
+                        lightRoad1 = y : r;
+
+                        -- Light1 is green without cars AND there are cars in light2
+                        lightRoad1 = g & sensorRoad1 = FALSE & sensorRoad2 = TRUE & lightRoad2 = r: y;
+
+                        -- Light2 is yeallow now (it will be red in the next step), thus light1 can change to green in the next iteration
+			lightRoad2 = y : g;
+
+                        -- Otherwise keep the value
+                        TRUE: lightRoad1;
+                      esac;
+
+  next(lightRoad2) := case
+                        -- Light2 is yeallow now, so it will be red in the next step
+                        lightRoad2 = y : r;
+
+                        -- Light2 is green without cars AND there are cars in light1
+                        lightRoad2 = g & sensorRoad2 = FALSE & sensorRoad1 = TRUE & lightRoad1 = r: y;
+
+                        -- Light1 is yeallow now (it will be red in the next step), thus light2 can change to green in the next iteration
+			lightRoad1 = y : g;
+
+                        -- Otherwise keep the value
+                        TRUE: lightRoad2;
+                      esac;
+
+
+
+-- Model checking: 
+-- [Properties expressible in both CTL and LTL]
+
+-- SAFETY : "It never happens that the colour is green on both traffic lights"
+-- CTL
+   SPEC AG ! (lightRoad1 = g & lightRoad2 = g)
+-- LTL
+   LTLSPEC G ! (lightRoad1 = g & lightRoad2 = g)
+
+
+-- FAIRNESS: Green light can occur infinitly often
+-- This property does not hold. We need to define proper FAIR paths.
+-- CTL
+   SPEC AG (AF lightRoad1 = g)
+   SPEC AG (AF lightRoad2 = g)
+-- LTL
+   LTLSPEC G (F lightRoad1 = g)
+   LTLSPEC G (F lightRoad2 = g)
+
+
+-- [Properties only expressible in CTL]
+-- NON-BLOCKING: For all states where the light is red there exists a state where the sensor detects a car.
+   SPEC AG (lightRoad1 = r -> EF sensorRoad1 =  TRUE)
+   SPEC AG (lightRoad2 = r -> EF sensorRoad2 =  TRUE)
+
+
+-- [Properties only expressible in LTL]
+-- This property does not hold. We need to define proper FAIR paths.
+-- STRONG FAIRNESS: Whenever a car is detected infinitely often then the green light occurs infinitly often
+   LTLSPEC G (F sensorRoad1 = TRUE) -> G (F lightRoad1 = g)
+   LTLSPEC G (F sensorRoad2 = TRUE) -> G (F lightRoad2 = g)
+
+
+-- The following CTL properties are not equivalent to strong fairness expressed above in LTL. 
+-- This property holds even when the fair paths are not defined.
+   SPEC AG (AF sensorRoad1 = TRUE) -> AG (AF lightRoad1 = g)
+   SPEC AG (AF sensorRoad2 = TRUE) -> AG (AF lightRoad2 = g)
+
+
