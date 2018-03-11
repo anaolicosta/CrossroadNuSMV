@@ -1,12 +1,11 @@
-NuSMV program that models the traffic lights controlling a crossing of two one-way roads.
+NuSMV models for traffic lights controlling a crossing of two one-way roads.
 
-This model was built to test the impact of using the FAIRNESS keyword. In our setting, a path is fair iff 
+The models were built to test the impact of using the FAIRNESS keyword. In our setting, a path is fair iff 
 the green light occurs infinitely often. 
 
 
 # Structure
 
-Two .smv file were created to test the impact of defining fairness constraints:
 * project_without_fairness.smv: no fair paths;
 * project.smv: fair paths defined.
 
